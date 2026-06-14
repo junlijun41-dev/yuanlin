@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block body %}
+<div class="grid" style="margin-bottom:20px">
+  <div class="stat"><b>{{ stats.projects }}</b>工程项目</div>
+  <div class="stat"><b>{{ stats.templates }}</b>表单模板</div>
+  <div class="stat"><b>{{ stats.records }}</b>填报记录</div>
+</div>
+
+<div class="card">
+  <h2>新建工程项目</h2>
+  <form method="post" action="{{ url_for('main.project_new') }}">
+    <div class="grid">
+      <div><label class="req">工程名称</label><input name="name" required></div>
+      <div><label>工程编号</label><input name="code"></div>
+      <div><label>施工单位</label><input name="contractor"></div>
+      <div><label>监理单位</label><input name="supervisor"></div>
+      <div><label>建设单位/甲方</label><input name="owner"></div>
+    </div>
+    <br><button class="btn">创建项目</button>
+  </form>
+</div>
+
+<div class="card">
+  <h2>工程项目列表</h2>
+  {% if projects %}
+  <table>
+    <tr><th>工程名称</th><th>编号</th><th>施工单位</th><th>创建时间</th><th></th></tr>
+    {% for p in projects %}
+    <tr>
+      <td>{{ p.name }}</td><td>{{ p.code }}</td><td>{{ p.contractor }}</td>
+      <td class="muted">{{ p.created_at.strftime('%Y-%m-%d') }}</td>
+      <td><a class="btn sm" href="{{ url_for('main.project_detail', pid=p.id) }}">进入</a></td>
+    </tr>
+    {% endfor %}
+  </table>
+  {% else %}<p class="muted">暂无项目，先创建一个。</p>{% endif %}
+</div>
+{% endblock %}

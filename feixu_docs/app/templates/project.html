@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% block body %}
+<div class="card">
+  <h2>{{ p.name }}</h2>
+  <p class="muted">编号 {{ p.code or '—' }}　|　施工 {{ p.contractor or '—' }}　|　监理 {{ p.supervisor or '—' }}　|　甲方 {{ p.owner or '—' }}</p>
+</div>
+
+<div class="card">
+  <h2>新建填报（选择表单模板）</h2>
+  <table>
+    <tr><th>册</th><th>编号</th><th>表单名称</th><th>阶段</th><th>工艺</th><th></th></tr>
+    {% for t in templates %}
+    <tr>
+      <td><span class="tag">{{ t.volume }}</span></td>
+      <td>{{ t.code }}</td>
+      <td>{{ t.title }}{% if t.docx_file %} <span class="tag">含模板</span>{% endif %}</td>
+      <td>{{ PHASE_MAP.get(t.phase,'') }}</td>
+      <td>{{ PROCESS_MAP.get(t.process,'') }}</td>
+      <td><a class="btn sm" href="{{ url_for('main.record_new', pid=p.id, tid=t.id) }}">填报</a></td>
+    </tr>
+    {% endfor %}
+  </table>
+</div>
+
+<div class="card">
+  <h2>已填报资料（按组卷册）</h2>
+  {% if records %}
+    {% for vcode, vname in volumes %}
+      {% if by_volume.get(vcode) %}
+      <h3 style="font-size:15px;color:#1f7a4d">{{ vname }}</h3>
+      <table style="margin-bottom:18px">
+        <tr><th>记录标题</th><th>编号</th><th>报验状态</th><th>填报人</th><th>更新</th><th>操作</th></tr>
+        {% for r in by_volume[vcode] %}
+        <tr>
+          <td>{{ r.title }}</td>
+          <td>{{ r.template.code }}</td>
+          <td>
+            {% set order = WORKFLOW_STEPS|map(attribute=0)|list %}
+            {% set cur = order.index(r.workflow_step) %}
+            {% for sc, sn in WORKFLOW_STEPS %}
+              <span class="step {% if loop.index0 <= cur %}done{% endif %}">{{ sn }}</span>
+            {% endfor %}
+          </td>
+          <td class="muted">{{ r.author.name if r.author else '' }}</td>
+          <td class="muted">{{ r.updated_at.strftime('%m-%d %H:%M') }}</td>
+          <td>
+            <div class="inline">
+              <a class="btn sm" href="{{ url_for('main.record_edit', rid=r.id) }}">编辑</a>
+              <a class="btn sm gray" href="{{ url_for('main.record_export', rid=r.id) }}">导出Word</a>
+              <form method="post" action="{{ url_for('main.record_step', rid=r.id) }}" style="display:inline">
+                {% set order = WORKFLOW_STEPS|map(attribute=0)|list %}
+                {% set ci = order.index(r.workflow_step) %}
+                {% if ci < order|length - 1 %}
+                  <input type="hidden" name="target" value="{{ order[ci+1] }}">
+                  <button class="btn sm">推进▶{{ WORKFLOW_MAP[order[ci+1]] }}</button>
+                {% else %}<span class="tag">已验收</span>{% endif %}
+              </form>
+              <form method="post" action="{{ url_for('main.record_delete', rid=r.id) }}" style="display:inline" onsubmit="return confirm('确认删除？')">
+                <button class="btn sm red">删</button>
+              </form>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </table>
+      {% endif %}
+    {% endfor %}
+  {% else %}<p class="muted">暂无填报记录。</p>{% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}飞絮治理施工资料系统{% endblock %}</title>
+<style>
+  * { box-sizing: border-box; }
+  body { margin:0; font-family:"Microsoft YaHei",sans-serif; background:#f4f6f8; color:#222; }
+  header { background:#1f7a4d; color:#fff; padding:12px 24px; display:flex; align-items:center; gap:20px; }
+  header h1 { font-size:18px; margin:0; }
+  header nav a { color:#d7f0e2; text-decoration:none; margin-right:16px; font-size:14px; }
+  header nav a:hover { color:#fff; }
+  header .right { margin-left:auto; font-size:13px; }
+  header .right a { color:#cdeede; }
+  .wrap { max-width:1100px; margin:24px auto; padding:0 20px; }
+  .card { background:#fff; border-radius:8px; box-shadow:0 1px 4px rgba(0,0,0,.08); padding:20px; margin-bottom:20px; }
+  h2 { font-size:18px; margin:0 0 14px; border-left:4px solid #1f7a4d; padding-left:10px; }
+  table { width:100%; border-collapse:collapse; font-size:14px; }
+  th,td { border:1px solid #e3e7ea; padding:8px 10px; text-align:left; }
+  th { background:#f0f4f2; }
+  input,select,textarea { width:100%; padding:7px 9px; border:1px solid #ccd2d6; border-radius:5px; font-size:14px; }
+  textarea { min-height:60px; }
+  label { display:block; font-size:13px; color:#555; margin:10px 0 4px; }
+  .req::after { content:" *"; color:#d33; }
+  .btn { display:inline-block; background:#1f7a4d; color:#fff; border:none; padding:8px 16px; border-radius:5px; cursor:pointer; text-decoration:none; font-size:14px; }
+  .btn:hover { background:#19623d; }
+  .btn.sm { padding:4px 10px; font-size:12px; }
+  .btn.gray { background:#6b7780; }
+  .btn.red { background:#c0392b; }
+  .flash { padding:10px 14px; border-radius:6px; margin-bottom:14px; font-size:14px; }
+  .flash.ok { background:#e3f6ec; color:#1f7a4d; }
+  .flash.error { background:#fdecea; color:#c0392b; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:14px; }
+  .stat { background:#1f7a4d; color:#fff; border-radius:8px; padding:16px; }
+  .stat b { font-size:28px; display:block; }
+  .tag { display:inline-block; background:#eef3f0; color:#1f7a4d; border-radius:4px; padding:2px 8px; font-size:12px; }
+  .step { display:inline-block; padding:2px 8px; border-radius:10px; font-size:12px; background:#e8eef2; }
+  .step.done { background:#1f7a4d; color:#fff; }
+  .muted { color:#888; font-size:13px; }
+  .inline { display:flex; gap:8px; align-items:center; }
+</style>
+</head>
+<body>
+<header>
+  <h1>🌳 飞絮治理施工资料系统</h1>
+  {% if current_user.is_authenticated %}
+  <nav>
+    <a href="{{ url_for('main.dashboard') }}">工作台</a>
+    <a href="{{ url_for('main.templates_list') }}">表单模板</a>
+  </nav>
+  <span class="right">{{ current_user.name or current_user.username }}（{{ current_user.role_label }}）　<a href="{{ url_for('auth.logout') }}">退出</a></span>
+  {% endif %}
+</header>
+<div class="wrap">
+  {% with msgs = get_flashed_messages(with_categories=true) %}
+    {% for cat, m in msgs %}<div class="flash {{ cat }}">{{ m }}</div>{% endfor %}
+  {% endwith %}
+  {% block body %}{% endblock %}
+</div>
+</body>
+</html>

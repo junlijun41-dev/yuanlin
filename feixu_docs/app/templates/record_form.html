@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block body %}
+<div class="card">
+  <h2>{{ tpl.title }} <span class="tag">{{ tpl.code }}</span></h2>
+  <p class="muted">项目：{{ p.name }}　|　{{ PHASE_MAP.get(tpl.phase,'') }} / {{ PROCESS_MAP.get(tpl.process,'') }} / {{ tpl.volume }}</p>
+  <form method="post">
+    <label>记录标题</label>
+    <input name="_title" value="{{ rec.title if rec else tpl.title }}">
+    <hr style="margin:16px 0;border:none;border-top:1px solid #eee">
+    <div class="grid">
+    {% for f in tpl.fields %}
+      <div {% if f.type == 'textarea' %}style="grid-column:1/-1"{% endif %}>
+        <label {% if f.required %}class="req"{% endif %}>{{ f.label }}</label>
+        {% set val = data.get(f.key, '') %}
+        {% if f.type == 'textarea' %}
+          <textarea name="{{ f.key }}">{{ val }}</textarea>
+        {% elif f.type == 'select' %}
+          <select name="{{ f.key }}">
+            <option value="">--请选择--</option>
+            {% for o in f.options or [] %}<option value="{{o}}" {% if o==val %}selected{% endif %}>{{o}}</option>{% endfor %}
+          </select>
+        {% elif f.type in ('date','datetime') %}
+          <input type="{{ 'datetime-local' if f.type=='datetime' else 'date' }}" name="{{ f.key }}" value="{{ val }}">
+        {% else %}
+          <input name="{{ f.key }}" value="{{ val }}">
+        {% endif %}
+      </div>
+    {% endfor %}
+    </div>
+    <br>
+    <button class="btn">保存填报</button>
+    <a class="btn gray" href="{{ url_for('main.project_detail', pid=p.id) }}">返回</a>
+  </form>
+</div>
+{% endblock %}

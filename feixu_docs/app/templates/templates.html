@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block body %}
+<div class="card">
+  <h2>表单模板库（DB11/T712 标准 + 自定义）</h2>
+  <table>
+    <tr><th>册</th><th>编号</th><th>表单名称</th><th>阶段</th><th>工艺</th><th>字段数</th><th>导出模板</th></tr>
+    {% for t in templates %}
+    <tr>
+      <td><span class="tag">{{ t.volume }}</span></td>
+      <td>{{ t.code }}</td>
+      <td>{{ t.title }}{% if t.is_seed %} <span class="muted">(标准)</span>{% endif %}</td>
+      <td>{{ PHASE_MAP.get(t.phase,'') }}</td>
+      <td>{{ PROCESS_MAP.get(t.process,'') }}</td>
+      <td>{{ t.fields|length }}</td>
+      <td>
+        {% if t.docx_file %}<span class="tag">已上传</span>{% endif %}
+        <form method="post" action="{{ url_for('main.template_upload', tid=t.id) }}" enctype="multipart/form-data" class="inline">
+          <input type="file" name="docx" accept=".docx" style="width:auto">
+          <button class="btn sm">上传docx</button>
+        </form>
+      </td>
+    </tr>
+    {% endfor %}
+  </table>
+  <p class="muted">提示：上传的 docx 模板里用 <code>{{ '{{' }}字段key{{ '}}' }}</code> 作占位符（另支持 <code>{{ '{{' }}_title{{ '}}' }}</code>、<code>{{ '{{' }}_project{{ '}}' }}</code>、<code>{{ '{{' }}_date{{ '}}' }}</code>），导出时自动套用你的格式。</p>
+</div>
+
+<div class="card">
+  <h2>新建自定义模板</h2>
+  <form method="post" action="{{ url_for('main.template_new') }}">
+    <div class="grid">
+      <div><label class="req">表单名称</label><input name="title" required></div>
+      <div><label>资料编号</label><input name="code" placeholder="如 C2-S02"></div>
+      <div><label>阶段</label><select name="phase">{% for c,n in phases %}<option value="{{c}}">{{n}}</option>{% endfor %}</select></div>
+      <div><label>工艺</label><select name="process">{% for c,n in processes %}<option value="{{c}}">{{n}}</option>{% endfor %}</select></div>
+      <div><label>组卷册</label><select name="volume">{% for c,n in volumes %}<option value="{{c}}">{{n}}</option>{% endfor %}</select></div>
+    </div>
+    <label>字段定义（每行一个，格式：<code>key|标签|类型|必填</code>，类型可选 text/textarea/date/datetime/select，必填填 1）</label>
+    <textarea name="fields_raw" style="min-height:120px" placeholder="tree_no|树木编号|text|1&#10;dbh|胸径(cm)|text|1&#10;note|备注|textarea"></textarea>
+    <br><br><button class="btn">创建模板</button>
+  </form>
+</div>
+{% endblock %}

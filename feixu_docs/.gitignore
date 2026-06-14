@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# Flask instance: 数据库 / 上传 / 导出 (运行时生成，不入库)
+instance/feixu.db
+instance/uploads/
+instance/exports/
+instance/templates_files/
+
+# 日志 / 临时
+*.log
+srv_out.log
+srv_err.log
+
+# IDE / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
