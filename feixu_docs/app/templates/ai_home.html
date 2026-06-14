@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% block body %}
+<div class="card">
+  <h2>🤖 AI 助手（DeepSeek）</h2>
+  <p class="muted">规程问答 / 自动写文档 / 缺项检查 由 DeepSeek 提供。智能填表在「填报页」内使用。</p>
+</div>
+
+<div class="card">
+  <h2>规程问答助手</h2>
+  <div id="chatbox" style="max-height:340px;overflow:auto;border:1px solid #eee;border-radius:6px;padding:12px;margin-bottom:10px;background:#fafbfc;font-size:14px">
+    <div class="muted">问我：某张表怎么填 / 报验顺序 / 某工艺需要哪些资料 / 质监必查项……</div>
+  </div>
+  <div class="inline">
+    <input id="q" placeholder="例如：树干注射抑絮剂需要归档哪些资料？" onkeydown="if(event.key==='Enter')askAI()">
+    <button class="btn" onclick="askAI()" id="askBtn">提问</button>
+  </div>
+</div>
+
+<div class="card">
+  <h2>自动写文档</h2>
+  <div class="grid">
+    <div>
+      <label>文档类型</label>
+      <select id="dtype">
+        {% for k, v in doc_types.items() %}<option value="{{k}}">{{v}}</option>{% endfor %}
+      </select>
+    </div>
+    <div>
+      <label>工程名称</label>
+      <input id="pname" placeholder="如：朝阳区杨柳飞絮综合治理工程">
+    </div>
+  </div>
+  <label>补充信息（树木数量、区域、工期、特殊要求等，可空）</label>
+  <textarea id="dctx" placeholder="如：治理树木1200株，含注射800株、修剪300株、嫁接100株，工期3-5月"></textarea>
+  <br><button class="btn" onclick="genDoc()" id="docBtn">生成文档初稿</button>
+  <div id="docout" style="white-space:pre-wrap;margin-top:14px;font-size:14px;line-height:1.7"></div>
+  <button class="btn gray sm" id="copyBtn" style="display:none;margin-top:8px" onclick="copyDoc()">复制全文</button>
+</div>
+
+<script>
+let history = [];
+async function askAI(){
+  const q = document.getElementById('q').value.trim();
+  if(!q) return;
+  const box = document.getElementById('chatbox'), btn=document.getElementById('askBtn');
+  box.innerHTML += `<p><b>我：</b>${esc(q)}</p>`;
+  document.getElementById('q').value=''; btn.disabled=true; btn.textContent='思考中…';
+  box.scrollTop = box.scrollHeight;
+  try{
+    const r = await fetch('{{ url_for("ai.ask") }}',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({question:q, history})});
+    const d = await r.json();
+    if(d.error){ box.innerHTML += `<p style="color:#c0392b">出错：${esc(d.error)}</p>`; }
+    else{
+      box.innerHTML += `<p><b style="color:#1f7a4d">AI：</b>${esc(d.answer).replace(/\n/g,'<br>')}</p>`;
+      history.push({role:'user',content:q},{role:'assistant',content:d.answer});
+      if(d.usage) box.innerHTML += `<p class="muted" style="font-size:12px">本次消耗 token：${d.usage.total_tokens||''}</p>`;
+    }
+  }catch(e){ box.innerHTML += `<p style="color:#c0392b">网络错误</p>`; }
+  btn.disabled=false; btn.textContent='提问'; box.scrollTop = box.scrollHeight;
+}
+async function genDoc(){
+  const btn=document.getElementById('docBtn'), out=document.getElementById('docout');
+  btn.disabled=true; btn.textContent='生成中（可能十几秒）…'; out.textContent='';
+  try{
+    const r = await fetch('{{ url_for("ai.doc") }}',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({doc_type:document.getElementById('dtype').value,
+        project_name:document.getElementById('pname').value||'杨柳飞絮综合治理工程',
+        context:document.getElementById('dctx').value})});
+    const d = await r.json();
+    if(d.error){ out.innerHTML='<span style="color:#c0392b">出错：'+esc(d.error)+'</span>'; }
+    else{ out.textContent=d.text; document.getElementById('copyBtn').style.display='inline-block'; }
+  }catch(e){ out.innerHTML='<span style="color:#c0392b">网络错误</span>'; }
+  btn.disabled=false; btn.textContent='生成文档初稿';
+}
+function copyDoc(){ navigator.clipboard.writeText(document.getElementById('docout').textContent); }
+function esc(s){ return s.replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])); }
+</script>
+{% endblock %}

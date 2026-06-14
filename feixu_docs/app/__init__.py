@@ -29,8 +29,10 @@ def create_app():
 
     from .auth import auth_bp
     from .views import main_bp
+    from .ai_views import ai_bp
     app.register_blueprint(auth_bp)
     app.register_blueprint(main_bp)
+    app.register_blueprint(ai_bp)
 
     from .constants import PHASE_MAP, PROCESS_MAP, VOLUME_MAP, WORKFLOW_MAP, WORKFLOW_STEPS
     app.jinja_env.globals.update(

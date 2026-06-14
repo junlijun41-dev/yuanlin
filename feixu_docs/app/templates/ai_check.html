@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block body %}
+<div class="card">
+  <h2>AI 缺项 / 质监避坑检查 —— {{ p.name }}</h2>
+  <p class="muted">由 DeepSeek-Reasoner 对照 DB11/T712 与北京质监必查项分析当前已填资料。</p>
+  <form method="post">
+    <button class="btn" id="runBtn" onclick="this.textContent='分析中（十几秒）…';this.disabled=true;this.form.submit();">▶ 开始检查</button>
+    <a class="btn gray" href="{{ url_for('main.project_detail', pid=p.id) }}">返回项目</a>
+  </form>
+</div>
+
+<div class="card">
+  <h2>当前已填资料概要</h2>
+  <pre style="white-space:pre-wrap;font-size:13px;background:#fafbfc;padding:12px;border-radius:6px">{{ summary }}</pre>
+</div>
+
+{% if err %}<div class="flash error">{{ err }}</div>{% endif %}
+{% if report %}
+<div class="card">
+  <h2>检查结果</h2>
+  <div style="white-space:pre-wrap;font-size:14px;line-height:1.8">{{ report }}</div>
+  {% if usage %}<p class="muted" style="margin-top:10px">消耗 token：{{ usage.total_tokens }}</p>{% endif %}
+</div>
+{% endif %}
+{% endblock %}

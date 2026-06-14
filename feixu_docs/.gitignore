@@ -10,6 +10,7 @@ instance/feixu.db
 instance/uploads/
 instance/exports/
 instance/templates_files/
+instance/ai_key.txt
 
 # 日志 / 临时
 *.log

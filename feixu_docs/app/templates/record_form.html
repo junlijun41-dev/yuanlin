@@ -3,6 +3,12 @@
 <div class="card">
   <h2>{{ tpl.title }} <span class="tag">{{ tpl.code }}</span></h2>
   <p class="muted">项目：{{ p.name }}　|　{{ PHASE_MAP.get(tpl.phase,'') }} / {{ PROCESS_MAP.get(tpl.process,'') }} / {{ tpl.volume }}</p>
+  <div style="background:#f0f7f3;border:1px dashed #1f7a4d;border-radius:6px;padding:12px;margin-bottom:16px">
+    <label style="margin-top:0">🤖 AI 智能填表：粘贴/口述现场情况，自动拆成下方字段（草稿，请核对后保存）</label>
+    <textarea id="airaw" placeholder="例如：A3号树，杨树，胸径25厘米，今天上午9点打孔深度5厘米，注射抑絮剂30毫升，施工人张师傅，晴天"></textarea>
+    <br><button type="button" class="btn sm" id="aiBtn" onclick="aiFill()">AI 自动填充</button>
+    <span id="aimsg" class="muted"></span>
+  </div>
   <form method="post">
     <label>记录标题</label>
     <input name="_title" value="{{ rec.title if rec else tpl.title }}">
@@ -32,4 +38,27 @@
     <a class="btn gray" href="{{ url_for('main.project_detail', pid=p.id) }}">返回</a>
   </form>
 </div>
+<script>
+async function aiFill(){
+  const raw = document.getElementById('airaw').value.trim();
+  const btn = document.getElementById('aiBtn'), msg = document.getElementById('aimsg');
+  if(!raw){ msg.textContent='请先输入现场描述'; return; }
+  btn.disabled=true; btn.textContent='AI 解析中…'; msg.textContent='';
+  try{
+    const r = await fetch('{{ url_for("ai.fill", tid=tpl.id) }}',{method:'POST',
+      headers:{'Content-Type':'application/json'}, body:JSON.stringify({raw_text:raw})});
+    const d = await r.json();
+    if(d.error){ msg.textContent='出错：'+d.error; }
+    else{
+      let n=0;
+      for(const k in d.values){
+        const el=document.querySelector('[name="'+k+'"]');
+        if(el && d.values[k]){ el.value=d.values[k]; el.style.background='#fffbe6'; n++; }
+      }
+      msg.textContent='已填充 '+n+' 个字段，请核对'+(d.usage?'（token '+d.usage.total_tokens+'）':'');
+    }
+  }catch(e){ msg.textContent='网络错误'; }
+  btn.disabled=false; btn.textContent='AI 自动填充';
+}
+</script>
 {% endblock %}

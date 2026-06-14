@@ -3,6 +3,7 @@
 <div class="card">
   <h2>{{ p.name }}</h2>
   <p class="muted">编号 {{ p.code or '—' }}　|　施工 {{ p.contractor or '—' }}　|　监理 {{ p.supervisor or '—' }}　|　甲方 {{ p.owner or '—' }}</p>
+  <a class="btn sm" href="{{ url_for('ai.check', pid=p.id) }}">🤖 AI 缺项/质监避坑检查</a>
 </div>
 
 <div class="card">
