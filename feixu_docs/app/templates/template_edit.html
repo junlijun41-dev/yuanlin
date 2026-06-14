@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block body %}
+<div class="card">
+  <h2>编辑模板字段 —— {{ tpl.title }}</h2>
+  {% if tpl.docx_file %}<p class="muted">已绑定模板文件 <span class="tag">{{ tpl.docx_file }}</span>，导出时套用该格式；下方字段由占位符自动识别，可调整标签/类型/必填。</p>
+  {% else %}<p class="muted">该模板无文件，导出时自动生成两列表。</p>{% endif %}
+  <form method="post">
+    <div class="grid">
+      <div><label class="req">表单名称</label><input name="title" value="{{ tpl.title }}" required></div>
+      <div><label>资料编号</label><input name="code" value="{{ tpl.code or '' }}"></div>
+      <div><label>阶段</label><select name="phase">{% for c,n in phases %}<option value="{{c}}" {% if c==tpl.phase %}selected{% endif %}>{{n}}</option>{% endfor %}</select></div>
+      <div><label>工艺</label><select name="process">{% for c,n in processes %}<option value="{{c}}" {% if c==tpl.process %}selected{% endif %}>{{n}}</option>{% endfor %}</select></div>
+      <div><label>组卷册</label><select name="volume">{% for c,n in volumes %}<option value="{{c}}" {% if c==tpl.volume %}selected{% endif %}>{{n}}</option>{% endfor %}</select></div>
+    </div>
+
+    <h3 style="font-size:15px;color:#1f7a4d;margin-top:18px">字段（key 须与模板占位符一致，请勿改 key）</h3>
+    <table>
+      <tr><th>占位符 key</th><th>显示标签</th><th>类型</th><th>下拉选项(逗号分隔)</th><th>必填</th></tr>
+      {% for f in tpl.fields %}
+      <tr>
+        <td><input name="key" value="{{ f.key }}" readonly style="background:#f5f5f5"></td>
+        <td><input name="label" value="{{ f.label }}"></td>
+        <td>
+          <select name="type">
+            {% for tp in ['text','textarea','date','datetime','select'] %}
+            <option value="{{tp}}" {% if f.type==tp %}selected{% endif %}>{{tp}}</option>
+            {% endfor %}
+          </select>
+        </td>
+        <td><input name="options" value="{{ (f.options or [])|join(',') }}"></td>
+        <td style="text-align:center"><input type="checkbox" name="required" value="{{ f.key }}" {% if f.required %}checked{% endif %} style="width:auto"></td>
+      </tr>
+      {% endfor %}
+    </table>
+    {% if not tpl.fields %}<p class="muted">未识别到字段。请确认模板里写了 <code>{{ '{{' }}字段名{{ '}}' }}</code> 占位符后重新上传。</p>{% endif %}
+    <br>
+    <button class="btn">保存字段</button>
+    <a class="btn gray" href="{{ url_for('main.templates_list') }}">返回</a>
+  </form>
+</div>
+{% endblock %}

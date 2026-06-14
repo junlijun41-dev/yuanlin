@@ -1,9 +1,29 @@
 {% extends "base.html" %}
 {% block body %}
+
+<div class="card" style="border:2px solid #1f7a4d">
+  <h2>① 上传你自己的模板（自动建表）</h2>
+  <p class="muted">在你的 Word/Excel 模板里，要填数据的地方写成占位符 <code>{{ '{{' }}树木编号{{ '}}' }}</code>、<code>{{ '{{' }}胸径{{ '}}' }}</code>……
+  上传后系统自动读出占位符并生成填报字段。<br>
+  也支持英文key+中文标签：<code>{{ '{{' }}tree_no|树木编号{{ '}}' }}</code>。
+  系统自动填充的保留占位符：<code>{{ '{{' }}_title{{ '}}' }}</code>(标题)、<code>{{ '{{' }}_project{{ '}}' }}</code>(工程名)、<code>{{ '{{' }}_code{{ '}}' }}</code>(编号)、<code>{{ '{{' }}_date{{ '}}' }}</code>(日期)。</p>
+  <form method="post" action="{{ url_for('main.template_upload_new') }}" enctype="multipart/form-data">
+    <div class="grid">
+      <div><label class="req">模板文件 (.docx / .xlsx)</label><input type="file" name="file" accept=".docx,.xlsx" required></div>
+      <div><label>表单名称（留空取文件名）</label><input name="title"></div>
+      <div><label>资料编号</label><input name="code" placeholder="如 C2-S02"></div>
+      <div><label>阶段</label><select name="phase">{% for c,n in phases %}<option value="{{c}}">{{n}}</option>{% endfor %}</select></div>
+      <div><label>工艺</label><select name="process">{% for c,n in processes %}<option value="{{c}}">{{n}}</option>{% endfor %}</select></div>
+      <div><label>组卷册</label><select name="volume">{% for c,n in volumes %}<option value="{{c}}">{{n}}</option>{% endfor %}</select></div>
+    </div>
+    <br><button class="btn">上传并自动建表</button>
+  </form>
+</div>
+
 <div class="card">
-  <h2>表单模板库（DB11/T712 标准 + 自定义）</h2>
+  <h2>② 模板库</h2>
   <table>
-    <tr><th>册</th><th>编号</th><th>表单名称</th><th>阶段</th><th>工艺</th><th>字段数</th><th>导出模板</th></tr>
+    <tr><th>册</th><th>编号</th><th>表单名称</th><th>阶段</th><th>工艺</th><th>字段</th><th>模板文件</th><th>操作</th></tr>
     {% for t in templates %}
     <tr>
       <td><span class="tag">{{ t.volume }}</span></td>
@@ -13,20 +33,24 @@
       <td>{{ PROCESS_MAP.get(t.process,'') }}</td>
       <td>{{ t.fields|length }}</td>
       <td>
-        {% if t.docx_file %}<span class="tag">已上传</span>{% endif %}
-        <form method="post" action="{{ url_for('main.template_upload', tid=t.id) }}" enctype="multipart/form-data" class="inline">
-          <input type="file" name="docx" accept=".docx" style="width:auto">
-          <button class="btn sm">上传docx</button>
-        </form>
+        {% if t.docx_file %}<span class="tag">{{ t.docx_file.rsplit('.',1)[-1]|upper }} 已上传</span>{% else %}<span class="muted">无(自动表)</span>{% endif %}
+      </td>
+      <td>
+        <div class="inline">
+          <a class="btn sm gray" href="{{ url_for('main.template_edit', tid=t.id) }}">编辑字段</a>
+          <form method="post" action="{{ url_for('main.template_upload', tid=t.id) }}" enctype="multipart/form-data" class="inline">
+            <input type="file" name="docx" accept=".docx,.xlsx" style="width:auto">
+            <button class="btn sm">换模板</button>
+          </form>
+        </div>
       </td>
     </tr>
     {% endfor %}
   </table>
-  <p class="muted">提示：上传的 docx 模板里用 <code>{{ '{{' }}字段key{{ '}}' }}</code> 作占位符（另支持 <code>{{ '{{' }}_title{{ '}}' }}</code>、<code>{{ '{{' }}_project{{ '}}' }}</code>、<code>{{ '{{' }}_date{{ '}}' }}</code>），导出时自动套用你的格式。</p>
 </div>
 
 <div class="card">
-  <h2>新建自定义模板</h2>
+  <h2>③ 手工新建模板（不上传文件，直接定义字段）</h2>
   <form method="post" action="{{ url_for('main.template_new') }}">
     <div class="grid">
       <div><label class="req">表单名称</label><input name="title" required></div>
@@ -35,7 +59,7 @@
       <div><label>工艺</label><select name="process">{% for c,n in processes %}<option value="{{c}}">{{n}}</option>{% endfor %}</select></div>
       <div><label>组卷册</label><select name="volume">{% for c,n in volumes %}<option value="{{c}}">{{n}}</option>{% endfor %}</select></div>
     </div>
-    <label>字段定义（每行一个，格式：<code>key|标签|类型|必填</code>，类型可选 text/textarea/date/datetime/select，必填填 1）</label>
+    <label>字段定义（每行一个，格式：<code>key|标签|类型|必填</code>，类型 text/textarea/date/datetime/select，必填填 1）</label>
     <textarea name="fields_raw" style="min-height:120px" placeholder="tree_no|树木编号|text|1&#10;dbh|胸径(cm)|text|1&#10;note|备注|textarea"></textarea>
     <br><br><button class="btn">创建模板</button>
   </form>

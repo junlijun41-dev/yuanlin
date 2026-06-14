@@ -10,6 +10,7 @@ from werkzeug.utils import secure_filename
 from .constants import (PHASES, PROCESSES, VOLUMES, WORKFLOW_ORDER)
 from .export import export_record
 from .models import FormRecord, FormTemplate, Project, TreeLedger, db
+from .template_parse import extract_fields
 
 main_bp = Blueprint("main", __name__)
 
@@ -87,22 +88,97 @@ def template_new():
     return redirect(url_for("main.templates_list"))
 
 
+def _save_template_file(tpl, file):
+    """保存上传的 docx/xlsx，自动解析占位符生成字段。返回提取的字段数。"""
+    ext = os.path.splitext(file.filename)[1].lower()
+    if ext not in (".docx", ".xlsx"):
+        raise ValueError("仅支持 .docx 或 .xlsx 文件")
+    fn = "tpl_%d_%s%s" % (tpl.id, "f", ext)  # 固定名，覆盖式
+    path = os.path.join(current_app.config["TEMPLATE_DIR"], fn)
+    file.save(path)
+    tpl.docx_file = fn
+    fields = extract_fields(path)
+    if fields:
+        tpl.fields = fields
+    return len(fields)
+
+
 @main_bp.route("/templates/<int:tid>/upload", methods=["POST"])
 @login_required
 def template_upload(tid):
-    """上传 docx 模板文件（含 {{key}} 占位符）"""
+    """为已有模板上传 docx/xlsx 文件，自动重建字段。"""
     tpl = FormTemplate.query.get_or_404(tid)
     file = request.files.get("docx")
-    if file and file.filename.lower().endswith(".docx"):
-        fn = "tpl_%d_%s" % (tpl.id, secure_filename(file.filename))
-        path = os.path.join(current_app.config["TEMPLATE_DIR"], fn)
-        file.save(path)
-        tpl.docx_file = fn
+    if not file or not file.filename:
+        flash("请选择文件", "error")
+        return redirect(url_for("main.templates_list"))
+    try:
+        n = _save_template_file(tpl, file)
         db.session.commit()
-        flash("模板文件已上传，导出将套用该格式", "ok")
-    else:
-        flash("请上传 .docx 文件", "error")
-    return redirect(url_for("main.templates_list"))
+        flash("模板已上传，自动识别 %d 个字段；可点「编辑字段」调整标签/必填" % n, "ok")
+    except ValueError as e:
+        flash(str(e), "error")
+    return redirect(url_for("main.template_edit", tid=tpl.id))
+
+
+@main_bp.route("/templates/upload_new", methods=["POST"])
+@login_required
+def template_upload_new():
+    """上传文件直接新建模板（占位符自动建表）。"""
+    file = request.files.get("file")
+    if not file or not file.filename:
+        flash("请选择模板文件", "error")
+        return redirect(url_for("main.templates_list"))
+    tpl = FormTemplate(code=request.form.get("code", ""),
+                       title=request.form.get("title", "").strip() or os.path.splitext(file.filename)[0],
+                       phase=request.form.get("phase"), process=request.form.get("process"),
+                       volume=request.form.get("volume"))
+    db.session.add(tpl)
+    db.session.flush()  # 拿到 tpl.id
+    try:
+        n = _save_template_file(tpl, file)
+        db.session.commit()
+        flash("模板已创建，自动识别 %d 个字段，请检查后保存" % n, "ok")
+        return redirect(url_for("main.template_edit", tid=tpl.id))
+    except ValueError as e:
+        db.session.rollback()
+        flash(str(e), "error")
+        return redirect(url_for("main.templates_list"))
+
+
+@main_bp.route("/templates/<int:tid>/edit", methods=["GET", "POST"])
+@login_required
+def template_edit(tid):
+    """编辑模板字段：调整标签/类型/必填/下拉选项。"""
+    tpl = FormTemplate.query.get_or_404(tid)
+    if request.method == "POST":
+        keys = request.form.getlist("key")
+        labels = request.form.getlist("label")
+        types = request.form.getlist("type")
+        opts = request.form.getlist("options")
+        reqs = set(request.form.getlist("required"))  # 勾选的 key
+        fields = []
+        for i, k in enumerate(keys):
+            k = k.strip()
+            if not k:
+                continue
+            f = {"key": k, "label": (labels[i].strip() or k),
+                 "type": types[i] if i < len(types) else "text",
+                 "required": k in reqs}
+            if f["type"] == "select" and i < len(opts) and opts[i].strip():
+                f["options"] = [o.strip() for o in opts[i].split(",") if o.strip()]
+            fields.append(f)
+        tpl.fields = fields
+        tpl.title = request.form.get("title", tpl.title).strip() or tpl.title
+        tpl.code = request.form.get("code", tpl.code)
+        tpl.phase = request.form.get("phase", tpl.phase)
+        tpl.process = request.form.get("process", tpl.process)
+        tpl.volume = request.form.get("volume", tpl.volume)
+        db.session.commit()
+        flash("字段已保存", "ok")
+        return redirect(url_for("main.templates_list"))
+    return render_template("template_edit.html", tpl=tpl, phases=PHASES,
+                           processes=PROCESSES, volumes=VOLUMES)
 
 
 # ---------------- 填报记录 ----------------
@@ -181,13 +257,12 @@ def record_step(rid):
 def record_export(rid):
     rec = FormRecord.query.get_or_404(rid)
     tpl = rec.template
-    out_name = "C-%04d_%s.docx" % (rec.id, (tpl.code or tpl.title))
-    out_path = os.path.join(current_app.config["EXPORT_DIR"], secure_filename(out_name))
     tpl_file = None
     if tpl.docx_file:
         tpl_file = os.path.join(current_app.config["TEMPLATE_DIR"], tpl.docx_file)
-    export_record(rec, tpl, out_path, template_file=tpl_file)
-    return send_file(out_path, as_attachment=True, download_name=out_name)
+    out_path, ext = export_record(rec, tpl, current_app.config["EXPORT_DIR"], template_file=tpl_file)
+    dl_name = "C-%04d_%s%s" % (rec.id, (tpl.code or tpl.title or "record"), ext)
+    return send_file(out_path, as_attachment=True, download_name=dl_name)
 
 
 @main_bp.route("/records/<int:rid>/delete", methods=["POST"])
