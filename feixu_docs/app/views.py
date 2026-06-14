@@ -2,14 +2,15 @@
 import json
 import os
 
-from flask import (Blueprint, abort, current_app, flash, redirect,
+from flask import (Blueprint, abort, current_app, flash, jsonify, redirect,
                    render_template, request, send_file, url_for)
 from flask_login import current_user, login_required
 from werkzeug.utils import secure_filename
 
 from .constants import (PHASES, PROCESSES, VOLUMES, WORKFLOW_ORDER)
 from .export import export_record
-from .models import FormRecord, FormTemplate, Project, Requirement, TreeLedger, db
+from .models import (ChatMessage, FormRecord, FormTemplate, Project,
+                     Requirement, TreeLedger, db)
 from .template_parse import extract_fields
 
 main_bp = Blueprint("main", __name__)
@@ -321,3 +322,41 @@ def requirement_delete(rid):
     db.session.commit()
     flash("需求已删除", "ok")
     return redirect(url_for("main.requirements"))
+
+
+# ---------------- 在线聊天 ----------------
+def _chat_dict(m):
+    return {"id": m.id, "user_id": m.user_id,
+            "name": (m.user.name or m.user.username) if m.user else "?",
+            "content": m.content, "time": m.created_at.strftime("%m-%d %H:%M")}
+
+
+@main_bp.route("/chat")
+@login_required
+def chat():
+    """在线聊天页（前端轮询，2 人内部沟通，按发送人区分）。"""
+    return render_template("chat.html")
+
+
+@main_bp.route("/chat/messages")
+@login_required
+def chat_messages():
+    """返回 id 大于 after 的新消息（前端轮询用）。"""
+    after = request.args.get("after", 0, type=int)
+    q = ChatMessage.query
+    if after:
+        q = q.filter(ChatMessage.id > after)
+    msgs = q.order_by(ChatMessage.id.asc()).limit(200).all()
+    return jsonify(me=current_user.id, messages=[_chat_dict(m) for m in msgs])
+
+
+@main_bp.route("/chat/send", methods=["POST"])
+@login_required
+def chat_send():
+    content = (request.form.get("content") or "").strip()
+    if not content:
+        return jsonify(ok=False, error="消息不能为空"), 400
+    m = ChatMessage(user_id=current_user.id, content=content[:2000])
+    db.session.add(m)
+    db.session.commit()
+    return jsonify(ok=True, message=_chat_dict(m))

@@ -57,6 +57,17 @@ class Requirement(db.Model):
         return self.STATUS_LABELS.get(self.status, self.status)
 
 
+class ChatMessage(db.Model):
+    """实时在线聊天消息（2 人内部沟通，按发送人区分）。"""
+    __tablename__ = "chat_messages"
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"))
+    content = db.Column(db.Text, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    user = db.relationship("User")
+
+
 class Project(db.Model):
     __tablename__ = "projects"
     id = db.Column(db.Integer, primary_key=True)

@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% block title %}在线聊天{% endblock %}
+{% block body %}
+<div class="card">
+  <h2>💬 在线聊天</h2>
+  <p class="muted">实时沟通（约 2 秒刷新）。自己发的靠右显示，对方靠左，按姓名区分。</p>
+  <div id="chatBox" style="height:52vh;overflow-y:auto;background:#f7faf8;border:1px solid #e3e7ea;
+       border-radius:8px;padding:14px;"></div>
+  <form id="chatForm" class="inline" style="margin-top:12px">
+    <input id="chatInput" autocomplete="off" placeholder="输入消息，回车发送…" maxlength="2000">
+    <button class="btn" type="submit" style="white-space:nowrap">发送</button>
+  </form>
+</div>
+
+<style>
+  .msg { margin:8px 0; display:flex; flex-direction:column; max-width:72%; }
+  .msg .meta { font-size:12px; color:#888; margin:0 2px 2px; }
+  .msg .bubble { padding:8px 12px; border-radius:10px; font-size:14px; line-height:1.5;
+                 word-break:break-word; white-space:pre-wrap; }
+  .msg.mine { margin-left:auto; align-items:flex-end; }
+  .msg.mine .bubble { background:#1f7a4d; color:#fff; border-bottom-right-radius:2px; }
+  .msg.other .bubble { background:#fff; border:1px solid #d7e0da; color:#222; border-bottom-left-radius:2px; }
+</style>
+
+<script>
+(function () {
+  var box = document.getElementById("chatBox");
+  var form = document.getElementById("chatForm");
+  var input = document.getElementById("chatInput");
+  var lastId = 0, me = null;
+
+  function atBottom() { return box.scrollHeight - box.scrollTop - box.clientHeight < 60; }
+  function scrollDown() { box.scrollTop = box.scrollHeight; }
+
+  function addMsg(m) {
+    var wrap = document.createElement("div");
+    wrap.className = "msg " + (m.user_id === me ? "mine" : "other");
+    var meta = document.createElement("div");
+    meta.className = "meta";
+    meta.textContent = m.name + " · " + m.time;
+    var bubble = document.createElement("div");
+    bubble.className = "bubble";
+    bubble.textContent = m.content;          // textContent 防止 XSS
+    wrap.appendChild(meta); wrap.appendChild(bubble);
+    box.appendChild(wrap);
+    if (m.id > lastId) lastId = m.id;
+  }
+
+  function poll() {
+    fetch("{{ url_for('main.chat_messages') }}?after=" + lastId, { credentials: "same-origin" })
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        if (me === null) me = d.me;
+        if (d.messages && d.messages.length) {
+          var stick = atBottom();
+          d.messages.forEach(addMsg);
+          if (stick) scrollDown();
+        }
+      })
+      .catch(function () {});
+  }
+
+  form.addEventListener("submit", function (e) {
+    e.preventDefault();
+    var text = input.value.trim();
+    if (!text) return;
+    input.value = "";
+    var body = new URLSearchParams(); body.append("content", text);
+    fetch("{{ url_for('main.chat_send') }}", {
+      method: "POST", credentials: "same-origin", body: body
+    }).then(function (r) { return r.json(); })
+      .then(function (d) { if (d.ok) { addMsg(d.message); scrollDown(); } })
+      .catch(function () {});
+  });
+
+  poll();
+  setInterval(poll, 2000);
+})();
+</script>
+{% endblock %}

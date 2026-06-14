@@ -50,6 +50,7 @@
     <a href="{{ url_for('main.templates_list') }}">表单模板</a>
     <a href="{{ url_for('ai.home') }}">🤖 AI 助手</a>
     <a href="{{ url_for('main.requirements') }}">📋 需求清单</a>
+    <a href="{{ url_for('main.chat') }}">💬 在线聊天</a>
   </nav>
   <span class="right">{{ current_user.name or current_user.username }}（{{ current_user.role_label }}）　<a href="{{ url_for('auth.logout') }}">退出</a></span>
   {% endif %}
