@@ -9,7 +9,7 @@ from werkzeug.utils import secure_filename
 
 from .constants import (PHASES, PROCESSES, VOLUMES, WORKFLOW_ORDER)
 from .export import export_record
-from .models import FormRecord, FormTemplate, Project, TreeLedger, db
+from .models import FormRecord, FormTemplate, Project, Requirement, TreeLedger, db
 from .template_parse import extract_fields
 
 main_bp = Blueprint("main", __name__)
@@ -274,3 +274,50 @@ def record_delete(rid):
     db.session.commit()
     flash("已删除", "ok")
     return redirect(url_for("main.project_detail", pid=pid))
+
+
+# ---------------- 需求清单 ----------------
+@main_bp.route("/requirements")
+@login_required
+def requirements():
+    """需求清单：手动登记待做/在做/已完成的事项，页面默认空白，便于回看与继续完善。"""
+    items = Requirement.query.order_by(Requirement.created_at.desc()).all()
+    return render_template("requirements.html", items=items,
+                           status_labels=Requirement.STATUS_LABELS)
+
+
+@main_bp.route("/requirements/add", methods=["POST"])
+@login_required
+def requirement_add():
+    title = request.form.get("title", "").strip()
+    if not title:
+        flash("请填写需求标题", "error")
+        return redirect(url_for("main.requirements"))
+    r = Requirement(title=title, detail=request.form.get("detail", "").strip(),
+                    status=request.form.get("status", "todo"), created_by=current_user.id)
+    db.session.add(r)
+    db.session.commit()
+    flash("需求已添加", "ok")
+    return redirect(url_for("main.requirements"))
+
+
+@main_bp.route("/requirements/<int:rid>/status", methods=["POST"])
+@login_required
+def requirement_status(rid):
+    r = Requirement.query.get_or_404(rid)
+    target = request.form.get("status")
+    if target in Requirement.STATUS_LABELS:
+        r.status = target
+        db.session.commit()
+        flash("状态已更新", "ok")
+    return redirect(url_for("main.requirements"))
+
+
+@main_bp.route("/requirements/<int:rid>/delete", methods=["POST"])
+@login_required
+def requirement_delete(rid):
+    r = Requirement.query.get_or_404(rid)
+    db.session.delete(r)
+    db.session.commit()
+    flash("需求已删除", "ok")
+    return redirect(url_for("main.requirements"))

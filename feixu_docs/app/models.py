@@ -34,6 +34,29 @@ class User(UserMixin, db.Model):
         }.get(self.role, self.role)
 
 
+class Requirement(db.Model):
+    """需求清单：手动登记待做/在做/已完成的事项，便于回看与继续完善。
+
+    项目尚不确定哪些环节能自动化，先用这张表手动记录需求，页面默认空白、随时增删。
+    """
+    __tablename__ = "requirements"
+    id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(200), nullable=False)     # 需求标题
+    detail = db.Column(db.Text)                            # 详细说明（可留空）
+    status = db.Column(db.String(16), default="todo")      # todo/doing/done
+    created_by = db.Column(db.Integer, db.ForeignKey("users.id"))
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    author = db.relationship("User")
+
+    STATUS_LABELS = {"todo": "待办", "doing": "进行中", "done": "已完成"}
+
+    @property
+    def status_label(self):
+        return self.STATUS_LABELS.get(self.status, self.status)
+
+
 class Project(db.Model):
     __tablename__ = "projects"
     id = db.Column(db.Integer, primary_key=True)

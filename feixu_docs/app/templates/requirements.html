@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% block title %}需求清单{% endblock %}
+{% block body %}
+<div class="card">
+  <h2>📋 需求清单</h2>
+  <p class="muted">手动登记需求 / 待办事项，便于回看与继续完善。项目尚不确定哪些环节能自动化，先在这里逐条记录。</p>
+  <form method="post" action="{{ url_for('main.requirement_add') }}">
+    <div class="grid" style="grid-template-columns:2fr 3fr 1fr;align-items:end">
+      <div>
+        <label class="req">需求标题</label>
+        <input name="title" required placeholder="例如：树木台账批量导入">
+      </div>
+      <div>
+        <label>详细说明（可留空）</label>
+        <input name="detail" placeholder="补充背景、期望效果、相关表单等">
+      </div>
+      <div>
+        <label>状态</label>
+        <select name="status">
+          {% for k, v in status_labels.items() %}<option value="{{ k }}">{{ v }}</option>{% endfor %}
+        </select>
+      </div>
+    </div>
+    <br>
+    <button class="btn">+ 添加需求</button>
+  </form>
+</div>
+
+<div class="card">
+  {% if items %}
+  <table>
+    <thead><tr><th style="width:40px">#</th><th>需求</th><th style="width:90px">状态</th>
+      <th style="width:150px">登记时间</th><th style="width:170px">操作</th></tr></thead>
+    <tbody>
+    {% for r in items %}
+      <tr>
+        <td>{{ loop.revindex }}</td>
+        <td>
+          <b>{{ r.title }}</b>
+          {% if r.detail %}<br><span class="muted">{{ r.detail }}</span>{% endif %}
+        </td>
+        <td>
+          {% set color = {'todo':'#6b7780','doing':'#1f7a4d','done':'#19623d'} %}
+          <span class="step{% if r.status == 'done' %} done{% endif %}">{{ r.status_label }}</span>
+        </td>
+        <td class="muted">{{ r.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+        <td>
+          <div class="inline">
+            <form method="post" action="{{ url_for('main.requirement_status', rid=r.id) }}" class="inline">
+              <select name="status" onchange="this.form.submit()" style="width:auto;padding:3px 6px;font-size:12px">
+                {% for k, v in status_labels.items() %}
+                  <option value="{{ k }}" {% if k == r.status %}selected{% endif %}>{{ v }}</option>
+                {% endfor %}
+              </select>
+            </form>
+            <form method="post" action="{{ url_for('main.requirement_delete', rid=r.id) }}"
+                  onsubmit="return confirm('确定删除该需求？')">
+              <button class="btn sm red">删除</button>
+            </form>
+          </div>
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="muted">还没有需求记录，使用上方表单添加第一条。</p>
+  {% endif %}
+</div>
+{% endblock %}

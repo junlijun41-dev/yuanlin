@@ -81,10 +81,12 @@ SEED_TEMPLATES = [
 
 
 def seed_all():
-    if not User.query.filter_by(username="admin").first():
-        admin = User(username="admin", name="系统管理员", role="admin")
-        admin.set_password("admin123")
-        db.session.add(admin)
+    # 默认两个管理员账号，密码均为 admin123
+    for uname, dispname in (("admin", "系统管理员"), ("admin1", "管理员1")):
+        if not User.query.filter_by(username=uname).first():
+            u = User(username=uname, name=dispname, role="admin")
+            u.set_password("admin123")
+            db.session.add(u)
 
     for t in SEED_TEMPLATES:
         if not FormTemplate.query.filter_by(code=t["code"]).first():
